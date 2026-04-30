@@ -45,9 +45,6 @@ services:
           memory: 1G
           cpus: '2.0'
           pids: 200
-    networks:
-      - default
-      - goclaw-net
     restart: unless-stopped
 volumes:
   goclaw-data: null
