@@ -1,0 +1,54 @@
+services:
+  goclaw:
+    image: 'ghcr.io/nextlevelbuilder/goclaw:latest'
+    build:
+      context: '${GOCLAW_DIR:-.}'
+      dockerfile: Dockerfile
+      args:
+        ENABLE_OTEL: '${ENABLE_OTEL:-false}'
+        ENABLE_EMBEDUI: '${ENABLE_EMBEDUI:-true}'
+        ENABLE_PYTHON: '${ENABLE_PYTHON:-true}'
+        ENABLE_NODE: '${ENABLE_NODE:-true}'
+        ENABLE_FULL_SKILLS: '${ENABLE_FULL_SKILLS:-false}'
+        VERSION: '${GOCLAW_VERSION:-dev}'
+    env_file:
+      -
+        path: .env
+        required: false
+    environment:
+      - GOCLAW_HOST=0.0.0.0
+      - GOCLAW_PORT=18790
+      - GOCLAW_CONFIG=/app/data/config.json
+      - 'GOCLAW_GATEWAY_TOKEN=${GOCLAW_GATEWAY_TOKEN:-}'
+      - 'GOCLAW_ENCRYPTION_KEY=${GOCLAW_ENCRYPTION_KEY:-}'
+      - GOCLAW_SKILLS_DIR=/app/data/skills
+      - 'GOCLAW_TRACE_VERBOSE=${GOCLAW_TRACE_VERBOSE:-0}'
+    volumes:
+      - 'goclaw-data:/app/data'
+      - 'goclaw-workspace:/app/workspace'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    security_opt:
+      - 'no-new-privileges:true'
+    init: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+    tmpfs:
+      - '/tmp:rw,noexec,nosuid,size=256m'
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+          pids: 200
+    networks:
+      - default
+      - goclaw-net
+    restart: unless-stopped
+volumes:
+  goclaw-data: null
+  goclaw-workspace: null
