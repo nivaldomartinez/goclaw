@@ -17,7 +17,7 @@ import type { BuiltinToolData } from "./hooks/use-builtin-tools";
 // even when settings is empty (the form lets the user create settings).
 const TOOLS_WITH_DEDICATED_FORM = new Set([
   "web_search", "web_fetch", "tts", "knowledge_graph_search",
-  "create_image", "create_audio", "create_video",
+  "create_image", "create_audio", "create_video", "stt",
 ]);
 
 export function hasEditableSettings(tool: BuiltinToolData): boolean {
