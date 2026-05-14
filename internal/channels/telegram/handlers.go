@@ -421,6 +421,7 @@ func (c *Channel) handleMessage(ctx context.Context, update telego.Update) {
 				var sttErr error
 				if c.audioMgr != nil {
 					sttCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+					sttCtx = audio.WithChannel(sttCtx, "telegram")
 					res, err := c.audioMgr.Transcribe(sttCtx, audio.STTInput{FilePath: m.FilePath, MimeType: "audio/ogg"}, audio.STTOptions{})
 					cancel()
 					if err == nil && res != nil {
