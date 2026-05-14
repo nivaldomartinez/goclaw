@@ -117,7 +117,7 @@ func TestManager_Transcribe_UnknownSkipped(t *testing.T) {
 	}
 }
 
-// Case 6: channel override wins over tenant chain.
+// Case 6: channel override wins over tenant chain when it succeeds.
 func TestManager_Transcribe_ChannelOverrideWins(t *testing.T) {
 	m := newTestManager()
 
@@ -142,5 +142,35 @@ func TestManager_Transcribe_ChannelOverrideWins(t *testing.T) {
 	}
 	if res.Text != "channel-override" {
 		t.Errorf("expected channel override result, got %q", res.Text)
+	}
+}
+
+// Case 7: channel override fails → falls back to global chain (ElevenLabs).
+func TestManager_Transcribe_ChannelOverrideFallsBackToGlobal(t *testing.T) {
+	m := newTestManager()
+
+	// Register tenant-level ElevenLabs that should catch the fallback.
+	m.RegisterSTT(&mockSTT{
+		name:   "elevenlabs",
+		result: &TranscriptResult{Text: "elevenlabs-fallback", Provider: "elevenlabs"},
+	})
+	m.SetSTTChain([]string{"elevenlabs"})
+
+	// Register a failing channel-scoped proxy for "telegram".
+	m.RegisterChannelSTT("telegram", &mockSTT{
+		name: "proxy",
+		err:  errors.New("proxy unavailable"),
+	})
+
+	ctx := WithChannel(context.Background(), "telegram")
+	res, err := m.Transcribe(ctx, STTInput{}, STTOptions{})
+	if err != nil {
+		t.Fatalf("expected fallback to succeed, got error: %v", err)
+	}
+	if res.Provider != "elevenlabs" {
+		t.Errorf("expected fallback provider 'elevenlabs', got %q", res.Provider)
+	}
+	if res.Text != "elevenlabs-fallback" {
+		t.Errorf("expected fallback text, got %q", res.Text)
 	}
 }

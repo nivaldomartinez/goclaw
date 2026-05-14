@@ -420,9 +420,13 @@ func (c *Channel) handleMessage(ctx context.Context, update telego.Update) {
 				var transcript string
 				var sttErr error
 				if c.audioMgr != nil {
-					sttCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+					sttCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 					sttCtx = audio.WithChannel(sttCtx, "telegram")
-					res, err := c.audioMgr.Transcribe(sttCtx, audio.STTInput{FilePath: m.FilePath, MimeType: "audio/ogg"}, audio.STTOptions{})
+					mimeType := m.ContentType
+					if mimeType == "" {
+						mimeType = "audio/ogg"
+					}
+					res, err := c.audioMgr.Transcribe(sttCtx, audio.STTInput{FilePath: m.FilePath, MimeType: mimeType}, audio.STTOptions{})
 					cancel()
 					if err == nil && res != nil {
 						transcript = res.Text

@@ -64,24 +64,42 @@ func (m *Manager) RegisterChannelSTT(channelName string, providers ...STTProvide
 }
 
 // resolveSTTChain returns the ordered provider names for the current call.
-// Precedence: (1) channel override from ctx, (2) explicit m.sttChain,
-// (3) defaultSTTChain filtered to registered providers.
+// Precedence: channel override providers first, then global chain as fallback.
+// This ensures that if per-channel providers (e.g. legacy proxy) fail, the
+// global chain (e.g. ElevenLabs) is still tried rather than giving up.
 func (m *Manager) resolveSTTChain(ctx context.Context) []string {
-	// (1) Channel override: check if ctx carries a channel name.
-	if ch := channelFromCtx(ctx); ch != "" {
-		if overrides, ok := m.channelSTTOverrides[ch]; ok && len(overrides) > 0 {
-			return overrides
+	seen := make(map[string]bool)
+	var out []string
+
+	addUnique := func(names []string) {
+		for _, n := range names {
+			if !seen[n] {
+				seen[n] = true
+				out = append(out, n)
+			}
 		}
 	}
-	// (2) Explicit chain set via SetSTTChain.
-	if len(m.sttChain) > 0 {
-		return m.sttChain
+
+	// (1) Channel override: channel-scoped providers first.
+	if ch := channelFromCtx(ctx); ch != "" {
+		if overrides, ok := m.channelSTTOverrides[ch]; ok && len(overrides) > 0 {
+			addUnique(overrides)
+		}
 	}
-	// (3) Default: elevenlabs → proxy, filtered to what's registered.
-	var out []string
+
+	// (2) Append explicit chain as fallback (or primary when no channel override).
+	if len(m.sttChain) > 0 {
+		addUnique(m.sttChain)
+		return out
+	}
+
+	// (3) Append default chain filtered to registered providers.
 	for _, name := range defaultSTTChain {
 		if _, ok := m.sttProviders[name]; ok {
-			out = append(out, name)
+			if !seen[name] {
+				seen[name] = true
+				out = append(out, name)
+			}
 		}
 	}
 	return out

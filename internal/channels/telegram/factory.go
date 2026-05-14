@@ -5,8 +5,10 @@ import (
 	"fmt"
 
 	"github.com/nextlevelbuilder/goclaw/internal/audio"
+	"github.com/nextlevelbuilder/goclaw/internal/audio/proxy_stt"
 	"github.com/nextlevelbuilder/goclaw/internal/bus"
 	"github.com/nextlevelbuilder/goclaw/internal/channels"
+	"github.com/nextlevelbuilder/goclaw/internal/channels/media"
 	"github.com/nextlevelbuilder/goclaw/internal/config"
 	"github.com/nextlevelbuilder/goclaw/internal/store"
 )
@@ -20,24 +22,28 @@ type telegramCreds struct {
 
 // telegramInstanceConfig maps the non-secret config JSONB from the channel_instances table.
 type telegramInstanceConfig struct {
-	APIServer       string   `json:"api_server,omitempty"`
-	Proxy           string   `json:"proxy,omitempty"`
-	DMPolicy        string   `json:"dm_policy,omitempty"`
-	GroupPolicy     string   `json:"group_policy,omitempty"`
-	RequireMention  *bool    `json:"require_mention,omitempty"`
-	MentionMode     string   `json:"mention_mode,omitempty"`
-	HistoryLimit    int      `json:"history_limit,omitempty"`
-	DMStream        *bool    `json:"dm_stream,omitempty"`
-	GroupStream     *bool    `json:"group_stream,omitempty"`
-	DraftTransport  *bool    `json:"draft_transport,omitempty"`   // sendMessageDraft for DM streaming (default true)
-	ReasoningStream *bool    `json:"reasoning_stream,omitempty"` // show reasoning as separate message (default true)
-	ReactionLevel   string   `json:"reaction_level,omitempty"`
-	MediaMaxMB      int64    `json:"media_max_mb,omitempty"`
-	MediaMaxBytes   int64    `json:"media_max_bytes,omitempty"` // deprecated: use media_max_mb
-	LinkPreview     *bool    `json:"link_preview,omitempty"`
-	BlockReply      *bool    `json:"block_reply,omitempty"`
-	ForceIPv4       bool     `json:"force_ipv4,omitempty"`
-	AllowFrom       []string `json:"allow_from,omitempty"`
+	APIServer         string   `json:"api_server,omitempty"`
+	Proxy             string   `json:"proxy,omitempty"`
+	DMPolicy          string   `json:"dm_policy,omitempty"`
+	GroupPolicy       string   `json:"group_policy,omitempty"`
+	RequireMention    *bool    `json:"require_mention,omitempty"`
+	MentionMode       string   `json:"mention_mode,omitempty"`
+	HistoryLimit      int      `json:"history_limit,omitempty"`
+	DMStream          *bool    `json:"dm_stream,omitempty"`
+	GroupStream       *bool    `json:"group_stream,omitempty"`
+	DraftTransport    *bool    `json:"draft_transport,omitempty"`   // sendMessageDraft for DM streaming (default true)
+	ReasoningStream   *bool    `json:"reasoning_stream,omitempty"` // show reasoning as separate message (default true)
+	ReactionLevel     string   `json:"reaction_level,omitempty"`
+	MediaMaxMB        int64    `json:"media_max_mb,omitempty"`
+	MediaMaxBytes     int64    `json:"media_max_bytes,omitempty"` // deprecated: use media_max_mb
+	LinkPreview       *bool    `json:"link_preview,omitempty"`
+	BlockReply        *bool    `json:"block_reply,omitempty"`
+	ForceIPv4         bool     `json:"force_ipv4,omitempty"`
+	AllowFrom         []string `json:"allow_from,omitempty"`
+	STTProxyURL       string   `json:"stt_proxy_url,omitempty"`
+	STTAPIKey         string   `json:"stt_api_key,omitempty"`
+	STTTenantID       string   `json:"stt_tenant_id,omitempty"`
+	STTTimeoutSeconds int      `json:"stt_timeout_seconds,omitempty"`
 }
 
 // Factory creates a Telegram channel from DB instance data (no extra stores).
@@ -121,6 +127,17 @@ func buildChannel(name string, creds json.RawMessage, cfg json.RawMessage,
 	// Config-based channels keep "open" default for backward compat.
 	if tgCfg.GroupPolicy == "" {
 		tgCfg.GroupPolicy = "pairing"
+	}
+
+	// Register per-instance STT proxy when configured in DB instance config.
+	// This takes precedence over any config.json stt_proxy_url for "telegram".
+	if audioMgr != nil && ic.STTProxyURL != "" {
+		audioMgr.RegisterChannelSTT("telegram", proxy_stt.NewProvider(media.STTConfig{
+			ProxyURL:       ic.STTProxyURL,
+			APIKey:         ic.STTAPIKey,
+			TenantID:       ic.STTTenantID,
+			TimeoutSeconds: ic.STTTimeoutSeconds,
+		}))
 	}
 
 	ch, err := New(tgCfg, msgBus, pairingSvc, audioMgr, opts...)
