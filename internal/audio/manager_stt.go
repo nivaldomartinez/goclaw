@@ -11,7 +11,10 @@ import (
 var ErrAllSTTProvidersFailed = errors.New("all STT providers failed")
 
 // defaultSTTChain is the built-in fallback order when no explicit chain is set.
-var defaultSTTChain = []string{"elevenlabs", "proxy"}
+// "edge" is always registered (free, no API key via faster-whisper/whisper CLI)
+// so it acts as a zero-config fallback. Providers absent from sttProviders are
+// skipped automatically in resolveSTTChain step (3).
+var defaultSTTChain = []string{"elevenlabs", "edge", "proxy"}
 
 // Transcribe tries providers in chain order. Returns first success.
 // Wraps last error with ErrAllSTTProvidersFailed on total failure.

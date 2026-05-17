@@ -480,11 +480,17 @@ type TtsElevenLabsConfig struct {
 	ModelID string `json:"model_id,omitempty"` // default "eleven_multilingual_v2"
 }
 
-// TtsEdgeConfig configures the Microsoft Edge TTS provider (free, no API key).
+// TtsEdgeConfig configures the Microsoft Edge TTS provider (free, no API key)
+// and the Edge STT provider (faster-whisper / whisper CLI, free, no API key).
 type TtsEdgeConfig struct {
 	Enabled bool   `json:"enabled,omitempty"`
 	Voice   string `json:"voice,omitempty"` // default "en-US-MichelleNeural"
 	Rate    string `json:"rate,omitempty"`  // speech rate, e.g. "+0%"
+
+	// STT settings (faster-whisper / whisper CLI).
+	SttModel     string `json:"stt_model,omitempty"`      // tiny|base|small|medium|large (default "base")
+	SttLanguage  string `json:"stt_language,omitempty"`   // BCP-47 hint, empty = auto-detect
+	SttTimeoutMs int    `json:"stt_timeout_ms,omitempty"` // default 60000
 }
 
 // TtsMiniMaxConfig configures the MiniMax TTS provider.

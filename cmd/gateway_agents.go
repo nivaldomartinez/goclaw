@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/nextlevelbuilder/goclaw/internal/audio/edge"
 	"github.com/nextlevelbuilder/goclaw/internal/audio/elevenlabs"
 	geminiaudio "github.com/nextlevelbuilder/goclaw/internal/audio/gemini"
 	minimaxaudio "github.com/nextlevelbuilder/goclaw/internal/audio/minimax"
@@ -354,15 +355,23 @@ func setupAudioExtras(cfg *config.Config, mgr *tts.Manager) {
 		}
 	}
 
-	// ElevenLabs STT (Scribe v2) — reuse TTS credentials. Registered as tenant-scope
-	// default; per-request tenant override lands via builtin_tools[stt] in Phase 5
-	// channel migration. Legacy per-channel STTProxyURL is bridged separately.
+	// ElevenLabs STT (Scribe v2) — reuse TTS credentials.
 	if ellKey != "" {
 		mgr.RegisterSTT(elevenlabs.NewSTTProvider(elevenlabs.Config{
 			APIKey:  ellKey,
 			BaseURL: ellBase,
 		}))
-		mgr.SetSTTChain([]string{"elevenlabs", "proxy"})
 		slog.Info("audio.stt: elevenlabs registered")
 	}
+
+	// Edge STT — always registered (free, no API key, local faster-whisper/whisper CLI).
+	// Acts as the zero-config default so agents can understand audio out of the box.
+	// ElevenLabs takes priority when configured (defaultSTTChain: elevenlabs → edge → proxy).
+	edgeCfg := cfg.Tts.Edge
+	mgr.RegisterSTT(edge.NewSTTProvider(edge.STTConfig{
+		Model:     edgeCfg.SttModel,
+		Language:  edgeCfg.SttLanguage,
+		TimeoutMs: edgeCfg.SttTimeoutMs,
+	}))
+	slog.Info("audio.stt: edge registered (faster-whisper/whisper, no API key)")
 }
